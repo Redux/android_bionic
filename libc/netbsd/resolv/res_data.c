@@ -46,7 +46,6 @@ __RCSID("$NetBSD: res_data.c,v 1.8 2004/06/09 18:07:03 christos Exp $");
 #include <unistd.h>
 
 
-__LIBC_HIDDEN__
 const char * const _res_opcodes[] = {
 	"QUERY",
 	"IQUERY",
@@ -83,7 +82,7 @@ extern struct __res_state _nres;
 int  res_ourserver_p(const res_state, const struct sockaddr *);
 
 #ifdef ANDROID_CHANGES
-static int res_need_init() {
+int res_need_init() {
 	return ((_nres.options & RES_INIT) == 0U) || res_get_dns_changed();
 }
 #else

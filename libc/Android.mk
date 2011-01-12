@@ -187,6 +187,7 @@ libc_common_src_files := \
 	string/strcat.c \
 	string/strchr.c \
 	string/strcoll.c \
+	string/strcpy.c \
 	string/strcspn.c \
 	string/strdup.c \
 	string/strerror.c \
@@ -240,14 +241,13 @@ libc_common_src_files := \
 	inet/inet_ntoa.c \
 	inet/inet_ntop.c \
 	inet/inet_pton.c \
-	inet/ether_aton.c \
-	inet/ether_ntoa.c \
 	tzcode/asctime.c \
 	tzcode/difftime.c \
 	tzcode/localtime.c \
 	tzcode/strftime.c \
 	tzcode/strptime.c \
 	bionic/__set_errno.c \
+	bionic/_rand48.c \
 	bionic/cpuacct.c \
 	bionic/arc4random.c \
 	bionic/basename.c \
@@ -354,7 +354,6 @@ libc_common_src_files += \
 	arch-arm/bionic/setjmp.S \
 	arch-arm/bionic/sigsetjmp.S \
 	arch-arm/bionic/strlen.c.arm \
-	arch-arm/bionic/strcpy.S \
 	arch-arm/bionic/syscall.S \
 	string/memmove.c.arm \
 	string/bcopy.c \
@@ -366,7 +365,6 @@ libc_common_src_files += \
 # can set breakpoints in them without messing
 # up any thumb code.
 libc_common_src_files += \
-	bionic/pthread-atfork.c.arm \
 	bionic/pthread-rwlocks.c.arm \
 	bionic/pthread-timers.c.arm \
 	bionic/ptrace.c.arm
@@ -393,7 +391,6 @@ libc_common_src_files += \
 	arch-x86/bionic/_exit_with_stack_teardown.S \
 	arch-x86/bionic/setjmp.S \
 	arch-x86/bionic/_setjmp.S \
-	arch-x86/bionic/sigsetjmp.S \
 	arch-x86/bionic/vfork.S \
 	arch-x86/bionic/syscall.S \
 	arch-x86/string/bcopy_wrapper.S \
@@ -404,9 +401,7 @@ libc_common_src_files += \
 	arch-x86/string/memset_wrapper.S \
 	arch-x86/string/strcmp_wrapper.S \
 	arch-x86/string/strncmp_wrapper.S \
-	arch-x86/string/strlen_wrapper.S \
-	string/strcpy.c \
-	bionic/pthread-atfork.c \
+	arch-x86/string/strlen.S \
 	bionic/pthread-rwlocks.c \
 	bionic/pthread-timers.c \
 	bionic/ptrace.c
@@ -446,8 +441,6 @@ libc_common_src_files += \
 	string/strncmp.c \
 	string/memcmp.c \
 	string/strlen.c \
-	string/strcpy.c \
-	bionic/pthread-atfork.c \
 	bionic/pthread-rwlocks.c \
 	bionic/pthread-timers.c \
 	bionic/ptrace.c \
@@ -501,8 +494,17 @@ ifeq ($(TARGET_ARCH),arm)
   ifeq ($(ARCH_ARM_HAVE_TLS_REGISTER),true)
     libc_common_cflags += -DHAVE_ARM_TLS_REGISTER
   endif
+  ifeq ($(TARGET_HAVE_TEGRA_ERRATA_657451),true)
+    libc_common_cflags += -DHAVE_TEGRA_ERRATA_657451
+  endif
 else # !arm
-  libc_crt_target_cflags :=
+  ifeq ($(TARGET_ARCH),x86)
+    libc_crt_target_cflags := -m32
+
+    # Enable recent IA friendly memory routines (such as for Atom)
+    # These will not work on the earlier x86 machines
+    libc_common_cflags += -mtune=i686 -DUSE_SSSE3 -DUSE_SSE2
+  endif # x86
 endif # !arm
 
 # Define ANDROID_SMP appropriately.
@@ -517,6 +519,10 @@ endif
 #
 libc_crt_target_cflags += -I$(LOCAL_PATH)/private
 
+ifeq ($(BOARD_USE_NASTY_PTHREAD_CREATE_HACK),true)
+  libc_common_cflags += -DNASTY_PTHREAD_CREATE_HACK
+endif
+
 # Define some common includes
 # ========================================================
 libc_common_c_includes := \
@@ -524,10 +530,6 @@ libc_common_c_includes := \
 		$(LOCAL_PATH)/string  \
 		$(LOCAL_PATH)/stdio
 
-# Needed to access private/__dso_handle.S from
-# crtbegin_xxx.S and crtend_xxx.S
-#
-libc_crt_target_cflags += -I$(LOCAL_PATH)/private
 
 # Define the libc run-time (crt) support object files that must be built,
 # which are needed to build all other objects (shared/static libs and
@@ -708,7 +710,6 @@ LOCAL_MODULE:= libc_malloc_debug_leak
 LOCAL_SHARED_LIBRARIES := libc
 LOCAL_WHOLE_STATIC_LIBRARIES := libc_common
 LOCAL_SYSTEM_SHARED_LIBRARIES :=
-LOCAL_ALLOW_UNDEFINED_SYMBOLS := true
 # Don't prelink
 LOCAL_PRELINK_MODULE := false
 # Don't install on release build
