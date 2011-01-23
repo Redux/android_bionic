@@ -22,5 +22,3 @@ else
   # The host dalvikvm needs Android's concatenated & indexed timezone data.
   include $(LOCAL_PATH)/libc/zoneinfo/Android.mk
 endif
-
-CYANOGEN_BIONIC := true

@@ -21,7 +21,7 @@ include $(CLEAR_VARS)
 
 LOCAL_WHOLE_STATIC_LIBRARIES := libthread_db
 LOCAL_MODULE:=libthread_db
-LOCAL_SHARED_LIBRARIES := libdl libc
+LOCAL_SHARED_LIBRARIES := libdl
 
 # NOTE: Using --no-undefined results in a missing symbol that is defined inside
 # gdbserver and is resolved at runtime. Since there is no library containing
